@@ -11,6 +11,9 @@ use std::collections::HashMap;
 use std::env;
 
 mod logic;
+mod board;
+mod search;
+mod eval;
 
 // API and Response Objects
 // See https://docs.battlesnake.com/api
@@ -22,7 +25,7 @@ pub struct Game {
     timeout: u32,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Board {
     height: u32,
     width: i32,
@@ -31,7 +34,7 @@ pub struct Board {
     hazards: Vec<Coord>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Battlesnake {
     id: String,
     name: String,
@@ -43,7 +46,21 @@ pub struct Battlesnake {
     shout: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+impl Battlesnake {
+    pub fn set_health(&mut self, health: i32) {
+        self.health = health;
+    }
+
+    pub fn set_body(&mut self, body: Vec<Coord>) {
+        self.body = body;
+    }
+
+    pub fn set_head(&mut self, head: Coord) {
+        self.head = head;
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Coord {
     x: i32,
     y: i32,
@@ -104,9 +121,10 @@ fn rocket() -> _ {
 
     // We default to 'info' level logging. But if the `RUST_LOG` environment variable is set,
     // we keep that value instead.
-    if env::var("RUST_LOG").is_err() {
-        env::set_var("RUST_LOG", "info");
-    }
+    // TODO this is debug
+    // if env::var("RUST_LOG").is_err() {
+    //     env::set_var("RUST_LOG", "info");
+    // }
 
     env_logger::init();
 
