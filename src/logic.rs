@@ -11,17 +11,18 @@
 // For more info see docs.battlesnake.com
 
 use log::info;
+use rand::Rng;
 use serde_json::{json, Value};
-use crate::{Battlesnake, Board, Game};
+use crate::{Battlesnake, Board, Game, GameState};
 use crate::board::{Direction, GameBoard};
-use crate::search::sort_moves;
+use crate::search::think;
 
 pub fn info() -> Value {
     info!("INFO");
 
     return json!({
         "apiversion": "1",
-        "author": "JeffLegendPower", // TODO: Your Battlesnake Username
+        "author": "JeffLegendPower",
         "color": "#888888", // TODO: Choose color
         "head": "default", // TODO: Choose head
         "tail": "default", // TODO: Choose tail
@@ -29,7 +30,17 @@ pub fn info() -> Value {
 }
 
 // start is called when your Battlesnake begins a game
-pub fn start(_game: &Game, _turn: &i32, _board: &Board, _you: &Battlesnake) {
+pub fn start(game: &mut GameState) {
+
+    // Populate the zobrist table
+    let mut rng = rand::thread_rng();
+    for _ in 0..(game.board.width as i32 * game.board.height as i32 * 2) {
+        game.zobrist_table.push(rng.gen());
+    }
+    for _ in 0..100 {
+        game.health_zobrist_table.push(rng.gen());
+    }
+
     info!("GAME START");
 }
 
@@ -41,32 +52,22 @@ pub fn end(_game: &Game, _turn: &i32, _board: &Board, _you: &Battlesnake) {
 // move is called on every turn and returns your next move
 // Valid moves are "up", "down", "left", or "right"
 // See https://docs.battlesnake.com/api/example-move for available data
-pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> Value {
+// pub fn get_move(_game: &Game, turn: &i32, _board: &Board, you: &Battlesnake) -> Value {
+pub fn get_move(game: &mut GameState) -> Value {
+    let board = &game.board;
 
-    let mut game_board: GameBoard = GameBoard::new(_board.width, _board.height as i32, _board.food.clone(), _board.snakes.clone(), _board.hazards.clone());
-    // let possible_moves = game_board.generate_possible_moves(you);
-    // // If there are no possible moves, we are dead anyway
-    // if possible_moves.is_empty() {
-    //     return json!({ "move": "up" });
-    // }
+    let game_board: GameBoard = GameBoard::new(board.width, board.height, board.food.clone(), board.snakes.clone(), board.hazards.clone(),
+                                                   &game.zobrist_table, &game.health_zobrist_table);
+    let best_move = think(game_board, game.you.clone(), &mut game.tt);
 
-    let sorted_moves = sort_moves(game_board, you.clone());
-
-    // let chosen = possible_moves.choose(&mut rand::thread_rng()).unwrap();
-    let chosen = &sorted_moves[0];
-
-    // game_board.move_snake(game_board.get_snake(&you.id).clone(), chosen.clone());
-
-    let str_chosen = match chosen {
+    let best_move_str = match best_move {
         Direction::Up => "up",
         Direction::Down => "down",
         Direction::Left => "left",
         Direction::Right => "right",
+        Direction::None => "up",
     };
 
-    // TODO: Step 4 - Move towards food instead of random, to regain health and survive longer
-    // let food = &board.food;
-
-    info!("MOVE {}: {}", turn, str_chosen);
-    return json!({ "move": str_chosen });
+    info!("MOVE {}: {}", game.turn, best_move_str);
+    return json!({ "move": best_move_str });
 }
