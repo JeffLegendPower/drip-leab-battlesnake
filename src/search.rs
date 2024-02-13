@@ -1,25 +1,32 @@
-use std::fs::OpenOptions;
-use std::time::Instant;
-use std::io::Write;
-use crate::Battlesnake;
 use crate::board::{CellContent, Direction, GameBoard};
 use crate::eval::eval;
 use crate::transposition_table::TTEntry;
+use crate::Battlesnake;
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::time::Instant;
 
-pub fn think(mut board: GameBoard, snake: Battlesnake, transposition_table: &mut Vec<TTEntry>) -> Direction {
-
-    let nearest_enemy = board.snakes.iter().filter(|s| s.borrow().id != snake.id).min_by_key(|s| {
-        let head = &s.borrow().head;
-        let snake_head = &snake.head;
-        return (head.x - snake_head.x).abs() + (head.y - snake_head.y).abs();
-    });
+pub fn think(
+    mut board: GameBoard,
+    snake: Battlesnake,
+    transposition_table: &mut Vec<TTEntry>,
+) -> Direction {
+    let nearest_enemy = board
+        .snakes
+        .iter()
+        .filter(|s| s.borrow().id != snake.id)
+        .min_by_key(|s| {
+            let head = &s.borrow().head;
+            let snake_head = &snake.head;
+            return (head.x - snake_head.x).abs() + (head.y - snake_head.y).abs();
+        });
 
     let ref_snake = board.get_snake(&snake.id);
 
     if nearest_enemy.is_none() {
         let possible_moves = board.generate_possible_moves(ref_snake.clone());
         if possible_moves.len() > 0 {
-            return possible_moves[0]
+            return possible_moves[0];
         }
         return Direction::None;
     }
@@ -42,10 +49,21 @@ pub fn think(mut board: GameBoard, snake: Battlesnake, transposition_table: &mut
 
         nodes_searched = 0;
         let mut temp_best_move = Direction::None;
-        score = minimax(&mut board, &snake.id, &enemy_id, depth.clone(), 0, -9999999, 9999999,
-                        true, Direction::None, Direction::None,
-                        transposition_table,
-                        &mut nodes_searched, &mut temp_best_move, start_time,
+        score = minimax(
+            &mut board,
+            &snake.id,
+            &enemy_id,
+            depth.clone(),
+            0,
+            -9999999,
+            9999999,
+            true,
+            Direction::None,
+            Direction::None,
+            transposition_table,
+            &mut nodes_searched,
+            &mut temp_best_move,
+            start_time,
         );
 
         // If the search cuts early, it will be bad so we will prevent that from affecting the best move
@@ -54,17 +72,31 @@ pub fn think(mut board: GameBoard, snake: Battlesnake, transposition_table: &mut
         }
     }
 
-    println!("Nodes Searched: {}, Depth {}, Best Score: {}, Best Direction: {:?}", nodes_searched, depth, score, best_move);
+    println!(
+        "Nodes Searched: {}, Depth {}, Best Score: {}, Best Direction: {:?}",
+        nodes_searched, depth, score, best_move
+    );
     // write_eval_data(score, board.clone(), &snake.id, &enemy_id);
-
 
     return best_move;
 }
 
-pub fn minimax(board: &mut GameBoard, snake_id: &str, enemy_id: &str, mut depth: i32, ply: i32, mut alpha: i32, mut beta: i32,
-               should_nmp: bool, last_move: Direction, last_2nd_move: Direction,
-               transposition_table: &mut Vec<TTEntry>,
-               nodes_searched: &mut i32, best_move: &mut Direction, start_time: Instant,) -> i32 {
+pub fn minimax(
+    board: &mut GameBoard,
+    snake_id: &str,
+    enemy_id: &str,
+    mut depth: i32,
+    ply: i32,
+    mut alpha: i32,
+    mut beta: i32,
+    should_nmp: bool,
+    last_move: Direction,
+    last_2nd_move: Direction,
+    transposition_table: &mut Vec<TTEntry>,
+    nodes_searched: &mut i32,
+    best_move: &mut Direction,
+    start_time: Instant,
+) -> i32 {
     *nodes_searched += 1;
 
     let snake = board.get_snake(snake_id).clone();
@@ -84,7 +116,10 @@ pub fn minimax(board: &mut GameBoard, snake_id: &str, enemy_id: &str, mut depth:
     // update_timing(start_time, MOVES_TOTAL_TIME, MOVES_TOTAL_RUNS);
 
     // They moved into us so this is just punishing that to prevent it
-    if (snake.borrow().head.x - enemy.borrow().head.x).abs() + (snake.borrow().head.y - enemy.borrow().head.y).abs() == 1 {
+    if (snake.borrow().head.x - enemy.borrow().head.x).abs()
+        + (snake.borrow().head.y - enemy.borrow().head.y).abs()
+        == 1
+    {
         return 10000;
     }
 
@@ -136,26 +171,44 @@ pub fn minimax(board: &mut GameBoard, snake_id: &str, enemy_id: &str, mut depth:
 
     let mut tt_flag = 1;
 
-    let mut scored_moves: Vec<(&Direction, i32)> = possible_moves.iter().map(|dir| (dir,
-                                                                                    // NO TONKAs, no AUs, no NEWTONMETERS, no INVERSEKILOJOULESPERMETERSSQUARED, no GOLDMAN
-                                                                                    if tt_hit && dir == &entry.best_move {
-                                                                                        1_000_000
-                                                                                        // } else if *dir == last_2nd_move { // Tempo bonus
-                                                                                        //     100_000
-                                                                                    } else {
-                                                                                        0
-                                                                                    }
-    )).collect();
+    let mut scored_moves: Vec<(&Direction, i32)> = possible_moves
+        .iter()
+        .map(|dir| {
+            (
+                dir,
+                // NO TONKAs, no AUs, no NEWTONMETERS, no INVERSEKILOJOULESPERMETERSSQUARED, no GOLDMAN
+                if tt_hit && dir == &entry.best_move {
+                    1_000_000
+                    // } else if *dir == last_2nd_move { // Tempo bonus
+                    //     100_000
+                } else {
+                    0
+                },
+            )
+        })
+        .collect();
 
     // // Null Move Pruning
     if depth > 5 && should_nmp {
         // Give the enemy snake an extra move, if we are still doing better, then this is a great position
 
-        let nmp = -minimax(board, enemy_id, snake_id, 3, ply + 1, -beta, -alpha,
-                           false, last_2nd_move.clone(), last_move.clone(),
-                           transposition_table,
-                           nodes_searched, best_move, start_time,
-                           /*EVAL_TOTAL_TIME, EVAL_TOTAL_RUNS, MOVES_TOTAL_TIME, MOVES_TOTAL_RUNS*/);
+        let nmp = -minimax(
+            board,
+            enemy_id,
+            snake_id,
+            3,
+            ply + 1,
+            -beta,
+            -alpha,
+            false,
+            last_2nd_move.clone(),
+            last_move.clone(),
+            transposition_table,
+            nodes_searched,
+            best_move,
+            start_time,
+            /*EVAL_TOTAL_TIME, EVAL_TOTAL_RUNS, MOVES_TOTAL_TIME, MOVES_TOTAL_RUNS*/
+        );
 
         // NMP fail-high
         if nmp >= beta {
@@ -171,12 +224,24 @@ pub fn minimax(board: &mut GameBoard, snake_id: &str, enemy_id: &str, mut depth:
     for (dir, _score) in scored_moves {
         board.move_snake(snake.clone(), dir.clone());
 
-        let new_score = -minimax(board, enemy_id, snake_id, depth - 1, ply + 1, -beta, -alpha,
-                                 should_nmp, dir.clone(), last_move.clone(),
-                                 transposition_table,
-                                 nodes_searched, best_move, start_time,
-                                 // bestPath, searchedNodes,
-                                 /*EVAL_TOTAL_TIME, EVAL_TOTAL_RUNS, MOVES_TOTAL_TIME, MOVES_TOTAL_RUNS*/);
+        let new_score = -minimax(
+            board,
+            enemy_id,
+            snake_id,
+            depth - 1,
+            ply + 1,
+            -beta,
+            -alpha,
+            should_nmp,
+            dir.clone(),
+            last_move.clone(),
+            transposition_table,
+            nodes_searched,
+            best_move,
+            start_time,
+            // bestPath, searchedNodes,
+            /*EVAL_TOTAL_TIME, EVAL_TOTAL_RUNS, MOVES_TOTAL_TIME, MOVES_TOTAL_RUNS*/
+        );
         board.undo_move(snake.clone());
 
         if new_score > best_score {
@@ -218,7 +283,8 @@ pub fn write_eval_data(target_score: i32, board: GameBoard, snake_id: &str, enem
         .write(true)
         .append(true)
         .create(true)
-        .open("/Users/ishaangoyal/RustroverProjects/starter-snake-rust/src/eval_data.csv").unwrap();
+        .open("/Users/ishaangoyal/RustroverProjects/starter-snake-rust/src/eval_data.csv")
+        .unwrap();
 
     if target_score.abs() > 1000 {
         return;
@@ -261,8 +327,9 @@ pub fn write_eval_data(target_score: i32, board: GameBoard, snake_id: &str, enem
         }
     }
 
-
-
-    let data = format!("{},{},{},{}", bfs_term, health_term, length_diff_term, target_score);
+    let data = format!(
+        "{},{},{},{}",
+        bfs_term, health_term, length_diff_term, target_score
+    );
     writeln!(file, "{}", data).unwrap();
 }

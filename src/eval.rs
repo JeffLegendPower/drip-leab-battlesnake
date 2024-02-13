@@ -1,10 +1,14 @@
+use crate::board::{CellContent, GameBoard};
+use crate::Battlesnake;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::rc::Rc;
-use crate::Battlesnake;
-use crate::board::{CellContent, GameBoard};
 
-pub fn eval(board: &GameBoard, snake: Rc<RefCell<Battlesnake>>, enemy: Rc<RefCell<Battlesnake>>) -> i32 {
+pub fn eval(
+    board: &GameBoard,
+    snake: Rc<RefCell<Battlesnake>>,
+    enemy: Rc<RefCell<Battlesnake>>,
+) -> i32 {
     // let snake = board.get_snake(snake_id);
     // let enemy = board.get_snake(enemy_id);
 
@@ -29,7 +33,7 @@ pub fn eval(board: &GameBoard, snake: Rc<RefCell<Battlesnake>>, enemy: Rc<RefCel
     }
 
     let snake_bfs = bfs(passability_matrix, snake_x as usize, snake_y as usize, 6);
-    let enemy_bfs = bfs(passability_matrix, enemy_x as usize, enemy_y as usize, 6   );
+    let enemy_bfs = bfs(passability_matrix, enemy_x as usize, enemy_y as usize, 6);
 
     for x in 0..board.width as usize {
         for y in 0..board.height as usize {
@@ -78,7 +82,12 @@ pub fn eval(board: &GameBoard, snake: Rc<RefCell<Battlesnake>>, enemy: Rc<RefCel
     return score;
 }
 
-pub(crate) fn bfs(passability_matrix: [[bool; 11]; 11], start_x: usize, start_y: usize, depth: i32) -> [[i32; 11]; 11] {
+pub(crate) fn bfs(
+    passability_matrix: [[bool; 11]; 11],
+    start_x: usize,
+    start_y: usize,
+    depth: i32,
+) -> [[i32; 11]; 11] {
     let mut distances: [[i32; 11]; 11] = [[-1; 11]; 11];
     let mut queue = VecDeque::new();
 
@@ -104,7 +113,10 @@ pub(crate) fn bfs(passability_matrix: [[bool; 11]; 11], start_x: usize, start_y:
                 let dist = (new_x as i32 - start_x as i32) * (new_x as i32 - start_x as i32)
                     + (new_y as i32 - start_y as i32) * (new_y as i32 - start_y as i32);
                 let max_dist = depth * depth;
-                if passability_matrix[new_x][new_y] && distances[new_x][new_y] == -1 && dist <= max_dist {
+                if passability_matrix[new_x][new_y]
+                    && distances[new_x][new_y] == -1
+                    && dist <= max_dist
+                {
                     distances[new_x][new_y] = distances[x][y] + 1;
                     queue.push_back((new_x, new_y));
                 }

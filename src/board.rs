@@ -1,6 +1,6 @@
+use crate::{Battlesnake, Coord};
 use std::cell::RefCell;
 use std::rc::Rc;
-use crate::{Battlesnake, Coord};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CellContent {
@@ -47,8 +47,15 @@ pub struct GameBoard {
 }
 
 impl GameBoard {
-    pub fn new(width: i32, height: i32, food: Vec<Coord>, snakes: Vec<Battlesnake>, hazards: Vec<Coord>,
-               zobrist_table: &Vec<u64>, health_zobrist_table: &Vec<u64>) -> Self {
+    pub fn new(
+        width: i32,
+        height: i32,
+        food: Vec<Coord>,
+        snakes: Vec<Battlesnake>,
+        hazards: Vec<Coord>,
+        zobrist_table: &Vec<u64>,
+        health_zobrist_table: &Vec<u64>,
+    ) -> Self {
         let mut matrix = vec![vec![CellContent::Empty; height as usize]; width as usize];
 
         // let mut zobrist_table = Vec::new();
@@ -82,7 +89,8 @@ impl GameBoard {
                 matrix[coord.x as usize][coord.y as usize] = CellContent::Snake(snake.id.clone());
 
                 // Snake hashes
-                zobrist_hash ^= zobrist_table[((coord.x * height * 2) + (coord.y * 2) + 1) as usize];
+                zobrist_hash ^=
+                    zobrist_table[((coord.x * height * 2) + (coord.y * 2) + 1) as usize];
 
                 // Passability boolboard
                 if i < snake.length - 1 {
@@ -98,7 +106,6 @@ impl GameBoard {
         for coord in hazards {
             matrix[coord.x as usize][coord.y as usize] = CellContent::Hazard;
         }
-
 
         Self {
             width,
@@ -116,7 +123,12 @@ impl GameBoard {
             // Order is:
             // UP-UP, UP-LEFT, LEFT-LEFT, DOWN-LEFT, DOWN-DOWN, DOWN-RIGHT, RIGHT-RIGHT, UP-RIGHT
             move_map: [
-                vec![Direction::Up, Direction::Left, Direction::Down, Direction::Right],
+                vec![
+                    Direction::Up,
+                    Direction::Left,
+                    Direction::Down,
+                    Direction::Right,
+                ],
                 vec![Direction::Left, Direction::Down, Direction::Right],
                 vec![Direction::Up, Direction::Down, Direction::Right],
                 vec![Direction::Down, Direction::Right],
@@ -4234,10 +4246,22 @@ impl GameBoard {
         action.old_head = old_head.clone();
 
         let new_head = match direction {
-            Direction::Up => Coord { x: old_head.clone().x, y: old_head.clone().y + 1 },
-            Direction::Down => Coord { x: old_head.clone().x, y: old_head.clone().y - 1 },
-            Direction::Left => Coord { x: old_head.clone().x - 1, y: old_head.clone().y },
-            Direction::Right => Coord { x: old_head.clone().x + 1, y: old_head.clone().y },
+            Direction::Up => Coord {
+                x: old_head.clone().x,
+                y: old_head.clone().y + 1,
+            },
+            Direction::Down => Coord {
+                x: old_head.clone().x,
+                y: old_head.clone().y - 1,
+            },
+            Direction::Left => Coord {
+                x: old_head.clone().x - 1,
+                y: old_head.clone().y,
+            },
+            Direction::Right => Coord {
+                x: old_head.clone().x + 1,
+                y: old_head.clone().y,
+            },
             Direction::None => {
                 println!("ERROR, tried to move a snake with Direction::None");
                 old_head.clone()
@@ -4266,7 +4290,8 @@ impl GameBoard {
             borrow.body.push(old_tail.clone()); // Make the snake longer fatass
             borrow.length += 1;
             action.ate_food = true;
-            self.zobrist_hash ^= self.zobrist_table[((new_head.x * self.height * 2) + (new_head.y * 2) + 0) as usize];
+            self.zobrist_hash ^= self.zobrist_table
+                [((new_head.x * self.height * 2) + (new_head.y * 2) + 0) as usize];
         } else {
             if borrow.health > 0 {
                 self.zobrist_hash ^= self.health_zobrist_table[(borrow.health - 1) as usize];
@@ -4283,9 +4308,12 @@ impl GameBoard {
         // Update the game board
         // removing the old tail MUST GO FIRST
         self.matrix[old_tail.x as usize][old_tail.y as usize] = CellContent::Empty;
-        self.zobrist_hash ^= self.zobrist_table[((old_tail.x * self.height * 2) + (old_tail.y * 2) + 1) as usize];
-        self.matrix[new_head.x as usize][new_head.y as usize] = CellContent::Snake(borrow.id.clone());
-        self.zobrist_hash ^= self.zobrist_table[((new_head.x * self.height * 2) + (new_head.y * 2) + 1) as usize];
+        self.zobrist_hash ^=
+            self.zobrist_table[((old_tail.x * self.height * 2) + (old_tail.y * 2) + 1) as usize];
+        self.matrix[new_head.x as usize][new_head.y as usize] =
+            CellContent::Snake(borrow.id.clone());
+        self.zobrist_hash ^=
+            self.zobrist_table[((new_head.x * self.height * 2) + (new_head.y * 2) + 1) as usize];
 
         self.boolboard[new_head.x as usize][new_head.y as usize] = true;
 
@@ -4301,22 +4329,29 @@ impl GameBoard {
             // let snake = self.get_snake(&action.snake_id).clone();
             let mut borrow = snake.borrow_mut();
 
-            self.zobrist_hash ^= self.zobrist_table[((action.new_head.x * self.height * 2) + (action.new_head.y * 2) + 1) as usize];
+            self.zobrist_hash ^= self.zobrist_table
+                [((action.new_head.x * self.height * 2) + (action.new_head.y * 2) + 1) as usize];
 
             if action.ate_food {
-                self.matrix[action.new_head.x as usize][action.new_head.y as usize] = CellContent::Food;
-                self.zobrist_hash ^= self.zobrist_table[((action.new_head.x * self.height * 2) + (action.new_head.y * 2) + 0) as usize];
+                self.matrix[action.new_head.x as usize][action.new_head.y as usize] =
+                    CellContent::Food;
+                self.zobrist_hash ^= self.zobrist_table[((action.new_head.x * self.height * 2)
+                    + (action.new_head.y * 2)
+                    + 0) as usize];
                 borrow.length -= 1;
             } else {
-                self.matrix[action.new_head.x as usize][action.new_head.y as usize] = CellContent::Empty;
+                self.matrix[action.new_head.x as usize][action.new_head.y as usize] =
+                    CellContent::Empty;
                 let new_tail = borrow.body.last().unwrap().clone();
                 borrow.body.push(action.old_tail.clone());
                 self.boolboard[new_tail.x as usize][new_tail.y as usize] = true;
             }
             self.boolboard[action.new_head.x as usize][action.new_head.y as usize] = false;
 
-            self.matrix[action.old_tail.x as usize][action.old_tail.y as usize] = CellContent::Snake(borrow.id.clone());
-            self.zobrist_hash ^= self.zobrist_table[((action.old_tail.x * self.height * 2) + (action.old_tail.y * 2) + 1) as usize];
+            self.matrix[action.old_tail.x as usize][action.old_tail.y as usize] =
+                CellContent::Snake(borrow.id.clone());
+            self.zobrist_hash ^= self.zobrist_table
+                [((action.old_tail.x * self.height * 2) + (action.old_tail.y * 2) + 1) as usize];
 
             if borrow.health > 0 {
                 self.zobrist_hash ^= self.health_zobrist_table[(borrow.health - 1) as usize];
@@ -4326,7 +4361,8 @@ impl GameBoard {
             self.zobrist_hash ^= self.health_zobrist_table[(borrow.health - 1) as usize];
 
             self.headboard[action.new_head.x as usize][action.new_head.y as usize] = 0;
-            self.headboard[action.old_head.x as usize][action.old_head.y as usize] = borrow.length.clone();
+            self.headboard[action.old_head.x as usize][action.old_head.y as usize] =
+                borrow.length.clone();
 
             borrow.body.remove(0);
             borrow.head = action.old_head.clone();
@@ -4349,20 +4385,16 @@ impl GameBoard {
         let right_x = old_head.x + 1;
         let right_y = old_head.y;
 
-        if up_y >= self.height
-            || self.boolboard[up_x as usize][up_y as usize] {
+        if up_y >= self.height || self.boolboard[up_x as usize][up_y as usize] {
             num |= 1 << 0;
         }
-        if left_x < 0
-            || self.boolboard[left_x as usize][left_y as usize] {
+        if left_x < 0 || self.boolboard[left_x as usize][left_y as usize] {
             num |= 1 << 1;
         }
-        if down_y < 0
-            || self.boolboard[down_x as usize][down_y as usize] {
+        if down_y < 0 || self.boolboard[down_x as usize][down_y as usize] {
             num |= 1 << 2;
         }
-        if right_x >= self.width
-            || self.boolboard[right_x as usize][right_y as usize] {
+        if right_x >= self.width || self.boolboard[right_x as usize][right_y as usize] {
             num |= 1 << 3;
         }
 
@@ -4384,35 +4416,48 @@ impl GameBoard {
         let up_right_y = old_head.y + 1;
 
         if up_up_y < self.height
-            && self.headboard[up_up_x as usize][up_up_y as usize] > snake.borrow().length {
+            && self.headboard[up_up_x as usize][up_up_y as usize] > snake.borrow().length
+        {
             num |= 1 << 4;
         }
-        if up_left_x >= 0 && up_left_y < self.height
-            && self.headboard[up_left_x as usize][up_left_y as usize] > snake.borrow().length {
+        if up_left_x >= 0
+            && up_left_y < self.height
+            && self.headboard[up_left_x as usize][up_left_y as usize] > snake.borrow().length
+        {
             num |= 1 << 5;
         }
         if left_left_x >= 0
-            && self.headboard[left_left_x as usize][left_left_y as usize] > snake.borrow().length {
+            && self.headboard[left_left_x as usize][left_left_y as usize] > snake.borrow().length
+        {
             num |= 1 << 6;
         }
-        if left_down_x >= 0 && left_down_y >= 0
-            && self.headboard[left_down_x as usize][left_down_y as usize] > snake.borrow().length {
+        if left_down_x >= 0
+            && left_down_y >= 0
+            && self.headboard[left_down_x as usize][left_down_y as usize] > snake.borrow().length
+        {
             num |= 1 << 7;
         }
         if down_down_y >= 0
-            && self.headboard[down_down_x as usize][down_down_y as usize] > snake.borrow().length {
+            && self.headboard[down_down_x as usize][down_down_y as usize] > snake.borrow().length
+        {
             num |= 1 << 8;
         }
-        if down_right_x < self.width && down_right_y >= 0
-            && self.headboard[down_right_x as usize][down_right_y as usize] > snake.borrow().length {
+        if down_right_x < self.width
+            && down_right_y >= 0
+            && self.headboard[down_right_x as usize][down_right_y as usize] > snake.borrow().length
+        {
             num |= 1 << 9;
         }
         if right_right_x < self.width
-            && self.headboard[right_right_x as usize][right_right_y as usize] > snake.borrow().length {
+            && self.headboard[right_right_x as usize][right_right_y as usize]
+                > snake.borrow().length
+        {
             num |= 1 << 10;
         }
-        if up_right_x < self.width && up_right_y < self.height
-            && self.headboard[up_right_x as usize][up_right_y as usize] > snake.borrow().length {
+        if up_right_x < self.width
+            && up_right_y < self.height
+            && self.headboard[up_right_x as usize][up_right_y as usize] > snake.borrow().length
+        {
             num |= 1 << 11;
         }
 
@@ -4421,7 +4466,10 @@ impl GameBoard {
     }
 
     pub fn get_snake(&self, snake_id: &str) -> &Rc<RefCell<Battlesnake>> {
-        self.snakes.iter().find(|s| s.borrow().id == snake_id).unwrap()
+        self.snakes
+            .iter()
+            .find(|s| s.borrow().id == snake_id)
+            .unwrap()
     }
 
     pub fn clone(&self) -> Self {
@@ -4429,10 +4477,14 @@ impl GameBoard {
         let width = self.width.clone();
         let height = self.height.clone();
 
-        let snakes = self.snakes.iter().map(|snake| {
-            let snake_clone = snake.borrow().clone();
-            Rc::new(RefCell::new(snake_clone))
-        }).collect();
+        let snakes = self
+            .snakes
+            .iter()
+            .map(|snake| {
+                let snake_clone = snake.borrow().clone();
+                Rc::new(RefCell::new(snake_clone))
+            })
+            .collect();
 
         let history = self.history.clone();
 

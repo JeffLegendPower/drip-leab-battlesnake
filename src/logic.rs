@@ -10,12 +10,12 @@
 // To get you started we've included code to prevent your Battlesnake from moving backwards.
 // For more info see docs.battlesnake.com
 
+use crate::board::{Direction, GameBoard};
+use crate::search::think;
+use crate::{Battlesnake, Board, Game, GameState};
 use log::info;
 use rand::Rng;
 use serde_json::{json, Value};
-use crate::{Battlesnake, Board, Game, GameState};
-use crate::board::{Direction, GameBoard};
-use crate::search::think;
 
 pub fn info() -> Value {
     info!("INFO");
@@ -31,7 +31,6 @@ pub fn info() -> Value {
 
 // start is called when your Battlesnake begins a game
 pub fn start(game: &mut GameState) {
-
     // Populate the zobrist table
     let mut rng = rand::thread_rng();
     for _ in 0..(game.board.width as i32 * game.board.height as i32 * 2) {
@@ -56,8 +55,15 @@ pub fn end(_game: &Game, _turn: &i32, _board: &Board, _you: &Battlesnake) {
 pub fn get_move(game: &mut GameState) -> Value {
     let board = &game.board;
 
-    let game_board: GameBoard = GameBoard::new(board.width, board.height, board.food.clone(), board.snakes.clone(), board.hazards.clone(),
-                                                   &game.zobrist_table, &game.health_zobrist_table);
+    let game_board: GameBoard = GameBoard::new(
+        board.width,
+        board.height,
+        board.food.clone(),
+        board.snakes.clone(),
+        board.hazards.clone(),
+        &game.zobrist_table,
+        &game.health_zobrist_table,
+    );
     let best_move = think(game_board, game.you.clone(), &mut game.tt);
 
     let best_move_str = match best_move {

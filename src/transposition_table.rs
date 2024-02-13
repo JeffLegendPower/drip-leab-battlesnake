@@ -17,4 +17,3 @@ pub struct TTEntry {
     pub(crate) score: i32,
     pub(crate) flag: i32,
 }
-
