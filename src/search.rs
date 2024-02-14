@@ -14,9 +14,9 @@ pub fn think(
     let nearest_enemy = board
         .snakes
         .iter()
-        .filter(|s| s.borrow().id != snake.id)
+        .filter(|s| s.id != snake.id)
         .min_by_key(|s| {
-            let head = &s.borrow().head;
+            let head = &s.head;
             let snake_head = &snake.head;
             return (head.x - snake_head.x).abs() + (head.y - snake_head.y).abs();
         });
@@ -24,7 +24,7 @@ pub fn think(
     let ref_snake = board.get_snake(&snake.id);
 
     if nearest_enemy.is_none() {
-        let possible_moves = board.generate_possible_moves(ref_snake.clone());
+        let possible_moves = board.generate_possible_moves(&ref_snake);
         if possible_moves.len() > 0 {
             return possible_moves[0];
         }
@@ -36,7 +36,7 @@ pub fn think(
 
     let start_time = Instant::now();
 
-    let enemy_borrow = nearest_enemy.unwrap().borrow();
+    let enemy_borrow = nearest_enemy.unwrap();
     let enemy_id = enemy_borrow.id.clone();
     drop(enemy_borrow);
 
@@ -104,27 +104,24 @@ pub fn minimax(
 
     if depth <= 0 || start_time.elapsed().as_millis() >= /*300*/80 {
         return if ply % 2 == 0 {
-            eval(board, snake.clone(), enemy.clone())
+            eval(board, &snake, &enemy)
         } else {
-            -eval(board, enemy.clone(), snake.clone())
+            -eval(board, &enemy, &snake)
         };
     }
 
     let mut best_score = -999999;
 
-    let possible_moves = board.generate_possible_moves(snake.clone());
+    let possible_moves = board.generate_possible_moves(&snake);
     // update_timing(start_time, MOVES_TOTAL_TIME, MOVES_TOTAL_RUNS);
 
     // They moved into us so this is just punishing that to prevent it
-    if (snake.borrow().head.x - enemy.borrow().head.x).abs()
-        + (snake.borrow().head.y - enemy.borrow().head.y).abs()
-        == 1
-    {
+    if (snake.head.x - enemy.head.x).abs() + (snake.head.y - enemy.head.y).abs() == 1 {
         return 10000;
     }
 
     // Dead
-    if possible_moves.is_empty() || snake.borrow().health <= 0 {
+    if possible_moves.is_empty() || snake.health <= 0 {
         return -10000 + ply;
     }
     // Potential game-ending branch
@@ -132,13 +129,13 @@ pub fn minimax(
         depth += 1;
     }
 
-    let snake_head = snake.borrow().head.clone();
-    let enemy_head = enemy.borrow().head.clone();
+    let snake_head = snake.head.clone();
+    let enemy_head = enemy.head.clone();
 
     let entry = &transposition_table[(board.zobrist_hash & 0x1FFFF) as usize];
     let tt_hit = entry.zobrist == board.zobrist_hash
-        && entry.friendly_health == snake.borrow().health
-        && entry.enemy_health == enemy.borrow().health
+        && entry.friendly_health == snake.health
+        && entry.enemy_health == enemy.health
         && entry.snake_head_x == snake_head.x
         && entry.snake_head_y == snake_head.y
         && entry.enemy_head_x == enemy_head.x
@@ -222,7 +219,7 @@ pub fn minimax(
 
     // println!();
     for (dir, _score) in scored_moves {
-        board.move_snake(snake.clone(), dir.clone());
+        board.move_snake(&snake, dir.clone());
 
         let new_score = -minimax(
             board,
@@ -242,7 +239,7 @@ pub fn minimax(
             // bestPath, searchedNodes,
             /*EVAL_TOTAL_TIME, EVAL_TOTAL_RUNS, MOVES_TOTAL_TIME, MOVES_TOTAL_RUNS*/
         );
-        board.undo_move(snake.clone());
+        board.undo_move(&snake);
 
         if new_score > best_score {
             best_score = new_score;
@@ -264,8 +261,8 @@ pub fn minimax(
     transposition_table[(board.zobrist_hash & 0x1FFFF) as usize] = TTEntry {
         zobrist: board.zobrist_hash.clone(),
         best_move: local_best_move.clone(),
-        friendly_health: snake.borrow().health.clone(),
-        enemy_health: enemy.borrow().health.clone(),
+        friendly_health: snake.health.clone(),
+        enemy_health: enemy.health.clone(),
         depth: depth.clone(),
         score: best_score.clone(),
         flag: tt_flag,
@@ -293,14 +290,14 @@ pub fn write_eval_data(target_score: i32, board: GameBoard, snake_id: &str, enem
     let snake = board.get_snake(snake_id);
     let enemy = board.get_snake(enemy_id);
 
-    let snake_x = snake.borrow().head.x;
-    let snake_y = snake.borrow().head.y;
-    let enemy_x = enemy.borrow().head.x;
-    let enemy_y = enemy.borrow().head.y;
+    let snake_x = snake.head.x;
+    let snake_y = snake.head.y;
+    let enemy_x = enemy.head.x;
+    let enemy_y = enemy.head.y;
 
     let mut bfs_term: i32 = 0;
-    let mut health_term: i32 = snake.borrow().health.clone();
-    let mut length_diff_term: i32 = snake.borrow().length.clone() - enemy.borrow().length.clone();
+    let mut health_term: i32 = snake.health.clone();
+    let mut length_diff_term: i32 = snake.length.clone() - enemy.length.clone();
 
     let mut passability_matrix: [[bool; 11]; 11] = [[false; 11]; 11];
 

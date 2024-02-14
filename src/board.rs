@@ -36,7 +36,7 @@ pub struct GameBoard {
     pub(crate) width: i32,
     pub(crate) height: i32,
     pub(crate) matrix: Vec<Vec<CellContent>>,
-    pub(crate) snakes: Vec<Rc<RefCell<Battlesnake>>>,
+    pub(crate) snakes: Vec<Battlesnake>,
     pub(crate) history: Vec<Action>,
     pub(crate) zobrist_hash: u64,
     pub(crate) health_zobrist_table: Vec<u64>,
@@ -81,7 +81,7 @@ impl GameBoard {
         let mut ref_snakes = Vec::new();
         for snake in snakes {
             zobrist_hash ^= health_zobrist_table[(snake.health - 1) as usize];
-            let ref_snake = Rc::new(RefCell::new(snake.clone()));
+            let ref_snake = snake.clone();
             ref_snakes.push(ref_snake.clone());
 
             let mut i = 0;
@@ -4228,9 +4228,9 @@ impl GameBoard {
         }
     }
 
-    pub fn move_snake(&mut self, snake: Rc<RefCell<Battlesnake>>, direction: Direction) -> bool {
+    pub fn move_snake(&mut self, snake: &Battlesnake, direction: Direction) -> bool {
         let start_time = std::time::Instant::now();
-        let mut borrow = snake.borrow_mut();
+        let mut borrow = snake.clone();
 
         let mut action: Action = Action {
             snake_id: borrow.id.clone(),
@@ -4319,15 +4319,15 @@ impl GameBoard {
 
         self.history.push(action.clone());
 
-        // println!("Move took: {:?}", start_time.elapsed());
+        println!("Move took: {:?}", start_time.elapsed());
         return true;
     }
 
-    pub fn undo_move(&mut self, snake: Rc<RefCell<Battlesnake>>) {
+    pub fn undo_move(&mut self, snake: &Battlesnake) {
         if let Some(action) = self.history.pop() {
             let start_time = std::time::Instant::now();
             // let snake = self.get_snake(&action.snake_id).clone();
-            let mut borrow = snake.borrow_mut();
+            let mut borrow = snake.clone();
 
             self.zobrist_hash ^= self.zobrist_table
                 [((action.new_head.x * self.height * 2) + (action.new_head.y * 2) + 1) as usize];
@@ -4366,16 +4366,16 @@ impl GameBoard {
 
             borrow.body.remove(0);
             borrow.head = action.old_head.clone();
-            // println!("Undo took: {:?}", start_time.elapsed());
+            println!("Undo took: {:?}", start_time.elapsed());
         }
     }
 
-    pub fn generate_possible_moves(&self, snake: Rc<RefCell<Battlesnake>>) -> Vec<Direction> {
+    pub fn generate_possible_moves(&self, snake: &Battlesnake) -> Vec<Direction> {
         let start_time = std::time::Instant::now();
 
         let mut num = 0;
 
-        let old_head = snake.borrow().head.clone();
+        let old_head = snake.head.clone();
         let up_x = old_head.x;
         let up_y = old_head.y + 1;
         let left_x = old_head.x - 1;
@@ -4416,90 +4416,55 @@ impl GameBoard {
         let up_right_y = old_head.y + 1;
 
         if up_up_y < self.height
-            && self.headboard[up_up_x as usize][up_up_y as usize] > snake.borrow().length
+            && self.headboard[up_up_x as usize][up_up_y as usize] > snake.length
         {
             num |= 1 << 4;
         }
         if up_left_x >= 0
             && up_left_y < self.height
-            && self.headboard[up_left_x as usize][up_left_y as usize] > snake.borrow().length
+            && self.headboard[up_left_x as usize][up_left_y as usize] > snake.length
         {
             num |= 1 << 5;
         }
         if left_left_x >= 0
-            && self.headboard[left_left_x as usize][left_left_y as usize] > snake.borrow().length
+            && self.headboard[left_left_x as usize][left_left_y as usize] > snake.length
         {
             num |= 1 << 6;
         }
         if left_down_x >= 0
             && left_down_y >= 0
-            && self.headboard[left_down_x as usize][left_down_y as usize] > snake.borrow().length
+            && self.headboard[left_down_x as usize][left_down_y as usize] > snake.length
         {
             num |= 1 << 7;
         }
         if down_down_y >= 0
-            && self.headboard[down_down_x as usize][down_down_y as usize] > snake.borrow().length
+            && self.headboard[down_down_x as usize][down_down_y as usize] > snake.length
         {
             num |= 1 << 8;
         }
         if down_right_x < self.width
             && down_right_y >= 0
-            && self.headboard[down_right_x as usize][down_right_y as usize] > snake.borrow().length
+            && self.headboard[down_right_x as usize][down_right_y as usize] > snake.length
         {
             num |= 1 << 9;
         }
         if right_right_x < self.width
-            && self.headboard[right_right_x as usize][right_right_y as usize]
-                > snake.borrow().length
+            && self.headboard[right_right_x as usize][right_right_y as usize] > snake.length
         {
             num |= 1 << 10;
         }
         if up_right_x < self.width
             && up_right_y < self.height
-            && self.headboard[up_right_x as usize][up_right_y as usize] > snake.borrow().length
+            && self.headboard[up_right_x as usize][up_right_y as usize] > snake.length
         {
             num |= 1 << 11;
         }
 
-        // println!("Generate possible moves took: {:?}", start_time.elapsed());
+        println!("Generate possible moves took: {:?}", start_time.elapsed());
         self.move_map[num].clone()
     }
 
-    pub fn get_snake(&self, snake_id: &str) -> &Rc<RefCell<Battlesnake>> {
-        self.snakes
-            .iter()
-            .find(|s| s.borrow().id == snake_id)
-            .unwrap()
-    }
-
-    pub fn clone(&self) -> Self {
-        let matrix = self.matrix.clone();
-        let width = self.width.clone();
-        let height = self.height.clone();
-
-        let snakes = self
-            .snakes
-            .iter()
-            .map(|snake| {
-                let snake_clone = snake.borrow().clone();
-                Rc::new(RefCell::new(snake_clone))
-            })
-            .collect();
-
-        let history = self.history.clone();
-
-        Self {
-            width,
-            height,
-            matrix,
-            snakes,
-            history,
-            zobrist_hash: self.zobrist_hash.clone(),
-            health_zobrist_table: self.health_zobrist_table.clone(),
-            zobrist_table: self.zobrist_table.clone(),
-            boolboard: self.boolboard.clone(),
-            headboard: self.headboard.clone(),
-            move_map: self.move_map.clone(),
-        }
+    pub fn get_snake(&self, snake_id: &str) -> &Battlesnake {
+        self.snakes.iter().find(|s| s.id == snake_id).unwrap()
     }
 }

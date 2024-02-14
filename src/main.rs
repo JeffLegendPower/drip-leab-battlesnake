@@ -65,7 +65,7 @@ struct SharedState {
     shared_state: Arc<Mutex<BTreeMap<String, GameState>>>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Coord {
     x: i32,
     y: i32,

@@ -4,11 +4,7 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::rc::Rc;
 
-pub fn eval(
-    board: &GameBoard,
-    snake: Rc<RefCell<Battlesnake>>,
-    enemy: Rc<RefCell<Battlesnake>>,
-) -> i32 {
+pub fn eval(board: &GameBoard, snake: &Battlesnake, enemy: &Battlesnake) -> i32 {
     // let snake = board.get_snake(snake_id);
     // let enemy = board.get_snake(enemy_id);
 
@@ -17,10 +13,10 @@ pub fn eval(
     // Quadratic score based on health to emphasize the danger of low health
     // score -= enemy.health / 15;
 
-    let snake_x = snake.borrow().head.x;
-    let snake_y = snake.borrow().head.y;
-    let enemy_x = enemy.borrow().head.x;
-    let enemy_y = enemy.borrow().head.y;
+    let snake_x = snake.head.x;
+    let snake_y = snake.head.y;
+    let enemy_x = enemy.head.x;
+    let enemy_y = enemy.head.y;
 
     let mut passability_matrix: [[bool; 11]; 11] = [[false; 11]; 11];
 
@@ -58,27 +54,27 @@ pub fn eval(
 
     score /= 2;
 
-    if snake.borrow().health < 70 {
-        score += (snake.borrow().health / 15) as i32 * (snake.borrow().health / 15) as i32 - 20;
+    if snake.health < 70 {
+        score += (snake.health / 15) as i32 * (snake.health / 15) as i32 - 20;
     }
-    score += (snake.borrow().length - enemy.borrow().length) as i32 * 2;
+    score += (snake.length - enemy.length) as i32 * 2;
 
     // // TODO we can also like subtract number of enemy legal moves
     // // TODO also we can account for who has more squares available to travel to
     // score += board.generate_possible_moves(snake.clone()).len() as i32 * 3;
     // score -= board.generate_possible_moves(snake.clone()).len() as i32 * 3;
-    // score += (snake.borrow().length - enemy.borrow().length) * 2;
+    // score += (snake.length - enemy.length) * 2;
     //
     // // Let's avoid the wall as we can easily die there
-    // let dist_to_wall = snake.borrow().head.x.abs().min((snake.borrow().head.x - board.width).abs()).min(
-    //     snake.borrow().head.y.abs().min((snake.borrow().head.y - board.height).abs()));
+    // let dist_to_wall = snake.head.x.abs().min((snake.head.x - board.width).abs()).min(
+    //     snake.head.y.abs().min((snake.head.y - board.height).abs()));
     //
-    // let enemy_dist_to_wall = enemy.borrow().head.x.abs().min((enemy.borrow().head.x - board.width).abs()).min(
-    //     enemy.borrow().head.y.abs().min((enemy.borrow().head.y - board.height).abs()));
+    // let enemy_dist_to_wall = enemy.head.x.abs().min((enemy.head.x - board.width).abs()).min(
+    //     enemy.head.y.abs().min((enemy.head.y - board.height).abs()));
     //
     // score += (dist_to_wall * dist_to_wall) - (enemy_dist_to_wall * enemy_dist_to_wall) / 3;
 
-    // println!("{}", snake.borrow().name);
+    // println!("{}", snake.name);
     return score;
 }
 
