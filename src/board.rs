@@ -81,8 +81,8 @@ impl GameBoard {
         let mut ref_snakes = Vec::new();
         for snake in snakes {
             zobrist_hash ^= health_zobrist_table[(snake.health - 1) as usize];
-            let ref_snake = snake.clone();
-            ref_snakes.push(ref_snake.clone());
+
+            ref_snakes.push(snake.clone());
 
             let mut i = 0;
             for coord in &snake.body {
@@ -97,7 +97,7 @@ impl GameBoard {
                     boolboard[coord.x as usize][coord.y as usize] = true;
                 }
                 if i == 0 {
-                    headboard[coord.x as usize][coord.y as usize] = snake.length.clone();
+                    headboard[coord.x as usize][coord.y as usize] = snake.length;
                 }
                 i += 1;
             }
@@ -4230,55 +4230,60 @@ impl GameBoard {
 
     pub fn move_snake(&mut self, snake: &Battlesnake, direction: Direction) -> bool {
         let start_time = std::time::Instant::now();
-        let mut borrow = snake.clone();
+        let idx = self
+            .snakes
+            .iter()
+            .position(|snake_t| snake_t.id == snake.id)
+            .unwrap();
+        let borrow = &mut self.snakes[idx];
 
         let mut action: Action = Action {
             snake_id: borrow.id.clone(),
-            direction: direction.clone(),
+            direction: direction,
             old_tail: Coord { x: 0, y: 0 },
             new_head: Coord { x: 0, y: 0 },
             old_head: Coord { x: 0, y: 0 },
             ate_food: false,
-            old_health: borrow.health.clone(),
+            old_health: borrow.health,
         };
 
-        let old_head = borrow.head.clone();
-        action.old_head = old_head.clone();
+        let old_head = borrow.head;
+        action.old_head = old_head;
 
         let new_head = match direction {
             Direction::Up => Coord {
-                x: old_head.clone().x,
-                y: old_head.clone().y + 1,
+                x: old_head.x,
+                y: old_head.y + 1,
             },
             Direction::Down => Coord {
-                x: old_head.clone().x,
-                y: old_head.clone().y - 1,
+                x: old_head.x,
+                y: old_head.y - 1,
             },
             Direction::Left => Coord {
-                x: old_head.clone().x - 1,
-                y: old_head.clone().y,
+                x: old_head.x - 1,
+                y: old_head.y,
             },
             Direction::Right => Coord {
-                x: old_head.clone().x + 1,
-                y: old_head.clone().y,
+                x: old_head.x + 1,
+                y: old_head.y,
             },
             Direction::None => {
                 println!("ERROR, tried to move a snake with Direction::None");
-                old_head.clone()
+                old_head
             }
         };
 
-        action.new_head = new_head.clone();
+        action.new_head = new_head;
         self.headboard[old_head.x as usize][old_head.y as usize] = 0;
-        self.headboard[new_head.x as usize][new_head.y as usize] = borrow.length.clone();
+        self.headboard[new_head.x as usize][new_head.y as usize] = borrow.length;
 
         // Add new head to the snake body
-        borrow.body.insert(0, new_head.clone());
-        borrow.head = new_head.clone();
+        borrow.body.insert(0, new_head);
+        borrow.head = new_head;
 
         // Remove the tail of the snake
         let old_tail = borrow.body.pop().unwrap();
-        action.old_tail = old_tail.clone();
+        action.old_tail = old_tail;
 
         self.zobrist_hash ^= self.health_zobrist_table[(borrow.health - 1) as usize];
         borrow.health -= 1;
@@ -4287,7 +4292,7 @@ impl GameBoard {
         if self.matrix[new_head.x as usize][new_head.y as usize] == CellContent::Food {
             borrow.health = 100; // Refill health
             self.zobrist_hash ^= self.health_zobrist_table[(borrow.health - 1) as usize];
-            borrow.body.push(old_tail.clone()); // Make the snake longer fatass
+            borrow.body.push(old_tail); // Make the snake longer fatass
             borrow.length += 1;
             action.ate_food = true;
             self.zobrist_hash ^= self.zobrist_table
@@ -4296,7 +4301,7 @@ impl GameBoard {
             if borrow.health > 0 {
                 self.zobrist_hash ^= self.health_zobrist_table[(borrow.health - 1) as usize];
             }
-            let new_tail = borrow.body.last().unwrap().clone();
+            let new_tail = borrow.body.last().unwrap();
             self.boolboard[new_tail.x as usize][new_tail.y as usize] = false;
             action.ate_food = false;
         }
@@ -4327,7 +4332,12 @@ impl GameBoard {
         if let Some(action) = self.history.pop() {
             let start_time = std::time::Instant::now();
             // let snake = self.get_snake(&action.snake_id).clone();
-            let mut borrow = snake.clone();
+            let idx = self
+                .snakes
+                .iter()
+                .position(|snake_t| snake_t.id == snake.id)
+                .unwrap();
+            let borrow = &mut self.snakes[idx];
 
             self.zobrist_hash ^= self.zobrist_table
                 [((action.new_head.x * self.height * 2) + (action.new_head.y * 2) + 1) as usize];
