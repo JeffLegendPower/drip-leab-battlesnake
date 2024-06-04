@@ -4,6 +4,8 @@ use crate::board::Direction;
 pub struct TTEntry {
     pub(crate) zobrist: u64,
     pub(crate) best_move: Direction,
+    pub(crate) second_best_move: Direction,
+    pub(crate) worst_move: Direction,
 
     // A bit of a hack to reduce collisions
     pub(crate) friendly_health: i32,

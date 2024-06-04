@@ -15,6 +15,7 @@ use rand::Rng;
 use serde_json::{json, Value};
 use crate::{Battlesnake, Board, Game, GameState};
 use crate::board::{Direction, GameBoard};
+use crate::game_recorder::GameRecorder;
 use crate::search::think;
 
 pub fn info() -> Value {
@@ -58,7 +59,7 @@ pub fn get_move(game: &mut GameState) -> Value {
 
     let game_board: GameBoard = GameBoard::new(board.width, board.height, board.food.clone(), board.snakes.clone(), board.hazards.clone(),
                                                    &game.zobrist_table, &game.health_zobrist_table);
-    let best_move = think(game_board, game.you.clone(), &mut game.tt);
+    let best_move = think(&mut game.game_recorder, game_board, game.you.clone(), &mut game.tt, &mut game.killers);
 
     let best_move_str = match best_move {
         Direction::Up => "up",
